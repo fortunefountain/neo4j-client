@@ -219,7 +219,7 @@ def cmd(user, password, host, port, query):
         user = input("user:")
     if not password:
         password = getpass("password:")
-    uri = "bolt://%s:%s" % (host, port)
+    uri = f"bolt://{host}:{port}"
     with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         with driver.session() as session:
 
@@ -227,20 +227,17 @@ def cmd(user, password, host, port, query):
                 if not re.match(r"\s*$", query):
                     if query == ":begin":
                         runner.begin()
-                        next
                     elif query == ":commit":
                         runner.commit()
-                        next
                     elif query == ":rollback":
                         runner.rollback()
-                        next
                     elif query == ":dump":
                         runner.query = """
 CALL apoc.export.cypher.all("all.cypher", {})
 """.strip()
                         runner.run()
                     elif query == ":exit":
-                        exit()
+                        sys.exit()
                     else:
                         runner.query = query
                         runner.run()
@@ -254,12 +251,12 @@ CALL apoc.export.cypher.all("all.cypher", {})
                             print(to_double_quoted_json(record))
                         session.close()
                         sys.exit()
-                    except CypherSyntaxError as e:
-                        print("[%s] %s" % (line_no, e.message), file=sys.stderr)
-                    except DatabaseError as e:
-                        print("[%s] %s" % (line_no, e.message), file=sys.stderr)
-                    except ConstraintError as e:
-                        print("[%s] %s" % (line_no, e.message), file=sys.stderr)
+                    except CypherSyntaxError as error:
+                        print(f"[{line_no}] {error.message}", file=sys.stderr)
+                    except DatabaseError as error:
+                        print(f"[{line_no}] {error.message}", file=sys.stderr)
+                    except ConstraintError as error:
+                        print(f"[{line_no}] {error.message}", file=sys.stderr)
 
                 if sys.stdin.isatty():
                     runner = Neo4jRunner(session)
@@ -271,12 +268,12 @@ CALL apoc.export.cypher.all("all.cypher", {})
                             exec_query(query)
                         except MachineError:
                             pass
-                        except CypherSyntaxError as e:
-                            print("[%s] %s" % (line_no, e.message))
-                        except DatabaseError as e:
-                            print("[%s] %s" % (line_no, e.message), file=sys.stderr)
-                        except ConstraintError as e:
-                            print("[%s] %s" % (line_no, e.message), file=sys.stderr)
+                        except CypherSyntaxError as error:
+                            print(f"[{line_no}] {error.message}", file=sys.stderr)
+                        except DatabaseError as error:
+                            print(f"[{line_no}] {error.message}", file=sys.stderr)
+                        except ConstraintError as error:
+                            print(f"[{line_no}] {error.message}", file=sys.stderr)
                 else:
                     runner = Neo4jRunner(session, mode="pipe")
                     for query in sys.stdin:
@@ -284,26 +281,27 @@ CALL apoc.export.cypher.all("all.cypher", {})
                         line_no += 1
                         try:
                             exec_query(query)
-                        except MachineError as e:
-                            print("[%s] %s" % (line_no, e.message), file=sys.stderr)
+                        except MachineError as error:
+                            print(f"[{line_no}] MacineError", file=sys.stderr)
                             sys.exit(1)
-                        except CypherSyntaxError as e:
+                        except CypherSyntaxError as error:
                             runner.syntax_error()
-                            print("[%s] %s" % (line_no, e.message), file=sys.stderr)
-                        except DatabaseError as e:
+                            print(f"[{line_no}] {error.message}", file=sys.stderr)
+                        except DatabaseError as error:
                             runner.rollback()
-                            print("[%s] %s" % (line_no, e.message), file=sys.stderr)
-                        except ConstraintError as e:
+                            print(f"[{line_no}] {error.message}", file=sys.stderr)
+                        except ConstraintError as error:
                             runner.rollback()
-                            print("[%s] %s" % (line_no, e.message), file=sys.stderr)
+                            print(f"[{line_no}] {error.message}", file=sys.stderr)
                             sys.exit(1)
-            except AuthError as e:
-                print("%s" % (e.message), file=sys.stderr)
+            except AuthError as error:
+                print(f"{error.message}", file=sys.stderr)
                 sys.exit(1)
-            except ServiceUnavailable as e:
-                print("%s" % (e.message), file=sys.stderr)
+            except ServiceUnavailable:
+                print("ServiceUnavailable", file=sys.stderr)
                 sys.exit(1)
 
 
 if __name__ == "__main__":
+    # pylint: disable=E1120
     cmd()
